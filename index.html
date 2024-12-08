@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>성향 테스트</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        .button-container {
+            margin-top: 20px;
+        }
+        button {
+            padding: 15px 25px;
+            margin: 10px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #006400;
+            color: white;
+        }
+        button:hover {
+            background-color: #004d00;
+        }
+        .result {
+            margin-top: 30px;
+            font-size: 1.2em;
+            color: #333;
+            display: none;
+        }
+        .progress-bar-container {
+            width: 80%;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin: 20px auto;
+            height: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, black, green);
+            transition: width 0.4s ease-in-out;
+            border-radius: 10px;
+        }
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 0;
+            line-height: 20px;
+            font-size: 0.9em;
+            color: #000;
+            font-weight: bold;
+        }
+        .progress-info {
+            margin-top: 10px;
+            font-size: 1em;
+            color: #6E4C1E;
+            font-weight: bold;
+        }
+        #result-title {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        #result-text {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #qrcode {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="question">질문 1: 새로운 사람을 만날 때, 당신은 대개 어떤 태도를 취하나요?</h1>
+    <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar"></div>
+        <div class="progress-text" id="progress-text">0%</div>
+    </div>
+    <div class="progress-info"></div>
+    <div class="button-container" id="options"></div>
+    <div id="result" class="result">
+        <div id="result-title"></div>
+        <div id="result-text"></div>
+        <div id="qrcode"></div>
+        <button id="restart-button" style="display: none;" onclick="restartTest()">다시 시작하기</button>
+    </div>
+
+    <script>
+        const questions = [
+            { text: "새로운 사람을 만날 때, 당신은 대개 어떤 태도를 취하나요?", options: ["A. 활발하게 대화를 이끈다.", "B. 상대방이 먼저 다가오기를 기다린다.", "C. 상황에 따라 다르게 반응한다."] },
+            { text: "자신이 가진 목표를 달성하기 위해 얼마나 계획적으로 움직이나요?", options: ["A. 꼼꼼하게 계획을 세우고 철저히 따르는 편이다.", "B. 큰 틀은 잡지만 유동적으로 움직인다.", "C. 즉흥적으로 결정하며 그때그때 판단한다."] },
+            { text: "아무도 없는 넓은 들판에 서 있다고 상상해 보세요. 당신은 그곳에서 어떤 기분을 느끼나요?", options: ["A. 자유로움과 해방감을 느낀다.", "B. 약간의 불안감을 느낀다.", "C. 아무 느낌이 없다."] },
+            { text: "다른 사람이 나에 대해 무엇을 생각하는지 신경 쓰는 편인가요?", options: ["A. 매우 신경 쓴다.", "B. 어느 정도는 신경 쓴다.", "C. 거의 신경 쓰지 않는다."] },
+            { text: "바쁜 일정이 계속될 때, 당신은 주로 어떻게 반응하나요?", options: ["A. 스트레스를 느끼지만 끝까지 해낸다.", "B. 피로감이 쌓이지만 시간 관리를 통해 극복한다.", "C. 피곤해질 때까지 밀어붙이다가 쉬어야 한다."] },
+            { text: "어려운 결정을 내릴 때, 당신은 어떤 방식으로 판단하나요?", options: ["A. 논리적으로 생각하여 최선의 선택을 한다.", "B. 주변 사람의 의견을 참고하여 결정한다.", "C. 직감과 감정에 따라 결정한다."] },
+            { text: "다른 사람과 갈등이 생겼을 때, 어떻게 대처하나요?", options: ["A. 상대방과 충분히 대화하고 해결하려 한다.", "B. 상황을 관망하며 타협점을 찾으려 한다.", "C. 대화하기보다 거리를 두고 정리하려 한다."] },
+            { text: "혼자만의 시간이 생긴다면, 주로 어떻게 보내고 싶나요?", options: ["A. 책을 읽거나 학습하면서 자기계발을 한다.", "B. 취미 활동을 즐기거나 창의적인 일을 한다.", "C. 쉬거나 아무 생각 없이 시간을 보낸다."] },
+            { text: "당신이 다른 사람을 도울 때 가장 만족감을 느끼는 순간은 언제인가요?", options: ["A. 내가 제공한 도움이 구체적으로 도움이 되었을 때.", "B. 상대방이 고마워할 때.", "C. 상대방이 문제를 스스로 해결할 수 있도록 지원했을 때."] },
+            { text: "예상치 못한 문제가 생겼을 때, 당신은 어떻게 대처하나요?", options: ["A. 바로 문제를 해결하려고 적극적으로 움직인다.", "B. 상황을 분석하고 신중하게 접근한다.", "C. 문제를 회피하거나 시간을 두고 생각한다."] },
+            { text: "꿈을 이루기 위해 필요한 가장 중요한 요소는 무엇이라 생각하나요?", options: ["A. 철저한 계획과 끈기.", "B. 주변의 도움과 협력.", "C. 운과 순간의 기회."] },
+            { text: "어려운 시기를 겪을 때, 당신을 가장 크게 위로하는 것은 무엇인가요?", options: ["A. 스스로 해결할 힘과 의지.", "B. 친구나 가족의 위로와 도움.", "C. 잠시 모든 것을 잊고 시간을 보내는 것."] },
+            { text: "삶에서 가장 중요한 가치는 무엇이라 생각하나요?", options: ["A. 성취와 성공.", "B. 인간관계와 사랑.", "C. 마음의 평온과 자유."] },
+            { text: "자신의 약점을 다른 사람에게 드러내는 것에 대해 어떻게 생각하나요?", options: ["A. 솔직한 대화는 관계를 더 깊게 만든다.", "B. 신중하게 드러내야 한다고 생각한다.", "C. 약점은 되도록 드러내지 않으려 한다."] },
+            { text: "당신은 어떤 순간에 가장 큰 성취감을 느끼나요?", options: ["A. 내 노력이 구체적인 결과로 나타날 때.", "B. 다른 사람들에게 긍정적인 영향을 줄 때.", "C. 큰 변화를 이루지 않아도 내가 조금씩 성장하고 있다고 느낄 때."] }
+        ];
+
+        const personalityTypes = [
+            { type: "순채", condition: (answers) => answers.filter((a, i) => [0, 9, 14].includes(i) && a === 'A').length >= 2, description: "당신은 인간관계를 소중히 여기며, 타인의 감정을 잘 이해하고 이를 존중하려는 노력을 아끼지 않는 사람입니다. 당신과 함께하는 사람들은 당신이 주는 따듯함과 공감 덕분에 위로를 얻고, 신뢰를 쌓아갑니다. 당신은 평화로운 관계를 유지하기 위해 때로는 자신의 입장을 양보하기도 하지만, 이로 인해 내면의 스트레스를 느낄 수도 있습니다. 당신이 만드는 안정감은 주변 사람들에게 소중한 가치로 여기지지만 당신 또한 누군가에게 도움을 요청할 수 있는 용기를 가질 때 더 균형 잡힌 삶을 살 수 있습니다.당신은 자신을 위해 혼자만의 시간을 가지며 내면의 에너지를 회복할 때도 필요합니다. 가끔은 자신의 감정을 억제하기 보다는 표현하고, 자신을 우선순위에 두는 것이 중요하다는 사실을 잊지 말아야 합니다.다가올 미래에는 당신에게 새로운 개회가 찾아옵니다. 당신이 지금까지 고민하거나 준비해 온 일과 관련해 예상치 못한 기회가 생길 것입니다. 이 기회는 처음엔 부담스럽게 느껴질 수 있지만, 잘 활용한다면 당신의 성장에 큰 도움이 될 것입니다." },
+            { type: "제비붓꽃", condition: (answers) => answers.filter((a, i) => [1, 5, 10].includes(i) && a === 'A').length >= 2, description: "당신은 사람들 사이에서 조화를 이루고, 평화를 유지하려는 성향을 가지고 있습니다. 상대방의 입장을 이해하고, 갈등을 해결하기 위해 중립적인 자세를 취하는 당신은 주변 사람들에게 신뢰를 줍니다. 당신은 조화를 중시하면서도 스스로를 잃지 않으려 노력합니다. 타인과의 관계에서 중심을 잡고, 자신의 정체성을 지키려는 모습은 당신을 더 성숙하고 균형 잡힌 사람으로 만들어 줍니다. 당신의 신중함과 공감 능력은 주변 사람들에게 큰 힘이 됩니다.당신은 때때로 자신의 의견이나 감정을 분명히 표현하지 못해 답답함을 느낄 수도 있습니다. 당신은 갈등을 피하려는 경향이 있지만, 때로는 대립을 통해 더 나은 결과를 얻을 수 있다는 사실을 알 필요가 있습니다.다가올 미래에 당신의 인간관계에 새로운 전환점이 찾아옵니다. 오랜 시간 소원했던 사람과의 관계가 다시 연결되거나, 현재의 관계에서 서로를 더 깊이 이해할 수 있는 대화의 순간이 있을 것입니다. 이과정은 도전철검 느껴질 수 있지만 관계를 더 풍요롭게 만드는 소중한 시간이 될 것입니다." },
+            { type: "삼백초", condition: (answers) => answers.filter((a, i) => [3, 8, 12].includes(i) && a === 'B').length >= 2, description: "당신은 이상적인 세계를 꿈꾸지만, 현실적인 제약을 충분히 이해하며 두 세계 사이에서 균형을 찾으려 노력하는 사람입니다. 당신은 자신의 이상을 단순한 꿈으로만 남기지 않고, 그것을 현실로 실현하려는 끈기와 결단력을 가지고 있습니다. 하지만 때로는 이상과 현실 사이의 갈등으로 인해 혼란을 느낄 수도 있습니다. 이 과정 속에서 당신은 자신이 진정으로 원하는 것이 무엇인지 그리고 그것을 이루기 위해 현실과 어떻게 조화를 이룰 수 있는지 탐구하게 됩니다. 당신은 자신의 이상을 포기하지 않으면서도 현실 속에서 목표를 실현할 방법을 찾아가는 독창적인 접근법을 가지고 있습니다.당신은 높은 목표를 설정하고 이를 이루기 위해 열정을 쏟지만, 현실에서 발생하는 문제들을 냉철하게 분석하는 능력도 갖추고 있습니다. 끊임없는 노력과 열정은 많은 사람들에게 영감을 줄 수 있으며, 당신 스스로도 이를 통해 삶의 의미를 더 깊이 느낄 수 있을 것입니다. 이상과 현실 사이에서의 균형을 유지하려는 당신의 여정은 당신을 더 강하고 풍요로운 사람으로 만들어 줄 것입니다.다가올 미래에 중요한 도전이 당신 앞에 나타나며, 이를 통해 자신의 잠재력을 시험할 기회를 얻게 됩니다. 도전은 어렵고 낯설게 느껴질 수 있지만 이를 헤쳐 나가는 과정에서 당신은 스스로를 더 믿게 되고 큰 자신감을 얻게 될 것입니다. 이 경험은 당신의 능력을 재확인하고 다음 단계로 나아갈 원동력을 제공할 것입니다." },
+            { type: "물꼬리풀", condition: (answers) => answers.filter((a, i) => [2, 7, 11].includes(i) && a === 'C').length >= 2, description: "당신은 조용하고 고요한 내면의 평화를 추구하는 사람입니다. 외부의 화려함이나 시끄러운 경쟁보다는 자신의 내면과 대화하며 진정한 자신을 발견하려고 노력합니다. 당신은 자신에게 주어진 시간과 공간 속에서 천천히 삶의 의미를 탐구하며, 불필요한 소음과 혼란에서 벗어나고자 합니다. 이러한 성향은 당신을 차분하고 신중한 사람으로 만들어주지만 때로는 세상과의 연결에서 소외감을 느낄 수 있습니다. 당신은 자신의 안전한 내면의 세계를 구축하며 그것을 보호하기 위해 세상과 일정한 거리를 두기도 합니다.그러나 자신의 평화를 타인과 나누고 싶어 합니다. 주변 사람들에게 당신의 차분함은 안정감과 위로를 줄 수 있습니다. 스스로의 내면을 깊이 이해하면서도 세상과 적극적으로 연결될 수 있는 균형을 찾는다면, 당신은 진정으로 풍요로운 삶을 누릴 수 있을 것입니다. 당신이 추구하는 고요함은 단순한 정적이 아니라, 활기와 성장의 기회를 내포한 고요함입니다.다가올 미래에 당신의 일상 속에서 소소하지만 의미 있는 변화가 시작됩니다. 이 변화는 새로운 취미를 시도하거나, 습관을 조금씩 바꾸는 것에서 출발할 수 있습니다. 처음에는 미미하게 보일지 몰라도 이러한 변화가 쌓이면 당신의 삶에 긍정적인 영향을 미칠 것이며, 새로운 가능성을 발견하는 계기가 될 것입니다." },
+            { type: "큰바늘꽃", condition: (answers) => answers.filter((a, i) => [4, 8, 14].includes(i) && (a === 'A' || a === 'B')).length >= 2, description: "당신은 종종 새로운 가능성과 경험을 탐구하며 세상을 다채로운 시각으로 바라보는 사람입니다. 창의성과 독창성을 중시하며, 전통적인 틀에 얽매이는 것을 꺼립니다. 당신의 머릿속에는 끊임없이 새로운 아이디어가 떠오르고 이를 실현하기 위해 노력합니다. 하지만 때로는 너무 많은 가능성 속에서 우선순위를 정하는 것이 어려울 때도 있습니다. 불확실한 상황에서는 순간적으로 불안을 느낄 수 있지만, 이내 자신의 독창적인 방법으로 극복해 나갑니다.당신은 다른 사람들이 쉽게 놓치는 세상의 디테일을 발견하는 특별한 관찰력을 가지고 있으며, 이러한 통찰력으로 많은 사람들에게 영감을 주는 존재입니다. 당신의 긍정적인 생각은 주변에 활기를 불어넣지만, 가끔은 자신의 속도에 맞춰 멈추고 돌아보는 시간도 필요합니다.가까운 미래에 당신은 재정적으로 안정감을 찾을 것입니다. 금전적인 문제나 고민이 해결의 실마리를 찾기 시작합니다. 계획했던 일이 성과를 내거나, 예상치 못한 방식으로 수익이 발생해 재정직인 안정감을 느낄 수 있을 것입니다. 중요한 것은 충동적으로 행동하기보다는 계획적으로 관리하며 이 기회를 장기적으로 연결하는 것입니다." },
+            { type: "봄맞이꽃", condition: (answers) => answers.filter((a, i) => [0, 6, 10].includes(i) && a === 'C').length >= 2, description: "당신은 풍부한 감정과 뛰어난 감수성을 가진 사람입니다. 주변 환경이나 타인의 감정을 매우 예민하게 감지하며, 이를 통해 깊은 공감을 해냅니다. 예술적이고 창의적인 분야에서 두각을 나타내며, 내면의 감정을 통해 세상을 바라보는 능력이 돋보입니다. 하지만 이러한 민감함은 때로 당신을 현실과의 거리감 속에 놓이게 만들 수도 있습니다. 감정을 통해 세상을 이해하면서도, 객관적으로 상황을 판단하려는 노력이 필요할 때도 있습니다.당신은 자신의 감정에 솔직하며, 이를 바탕으로 사람들에게 위로와 영감을 주는 존재입니다. 그러나 때로는 자신을 지키기 위해 감정을 조절하고 차분히 상황을 바라보는 자세를 유지하는 것도 중요합니다. 당신의 감정적인 깊이는 많은 사람들에게 감동을 주며, 스스로에게도 큰 자산이 됩니다.다가올 미래에 뜻밖의 만남이 당신에게 영감을 줄 것입니다. 새로운 사람을 만나거나 오랜만에 다시 만난 사람과의 대화에서 깊은 영감을 받을 가능성이 있습니다. 이 만남은 당신의 생각을 넓혀주고, 새로운 아이디어나 방향성을 제시하는 특별한 순간이 될 것입니다. 이를 통해 당신은 앞으로의 길을 더 분명히 그릴 수 있을 것입니다." },
+            { type: "매화마름", condition: (answers) => answers.filter((a, i) => [3, 11, 14].includes(i) && a === 'B').length >= 2, description: "당신은 다양한 상황과 역할에 적응하는 능력이 뛰어난 사람입니다. 어떤 환경에서도 자신의 자리를 찾아내며, 필요에 따라 다양한 능력을 발휘할 줄 압니다. 당신은 다방면에서 재능을 발휘하며, 주변 사람들에게 유용하고 믿을 수 있는 존재로 여겨집니다. 그러나 당신의 이러한 다재다능함은 때로 당신을 지치게 만들 수 있습니다. 너무 많은 책임을 떠안거나, 모든 것을 잘하려는 욕구 때문에 스스로를 과도하게 압박할 때도 있습니다. 당신의 다재다능함은 큰 장점이지만, 한 가지에 집중해 자신을 재발견하는 과정도 성장의 중요한 일부입니다.당신은 주변 사람들에게 영감을 주는 존재이며, 자신의 내면과 외부 세계 사이의 균형을 찾아갈 때 진정한 만족을 느낄 수 있습니다. 결국, 당신의 유연함과 적응력은 당신이 세상을 이해하고 자신만의 고유한 발자취를 남길 수 있게 해줄 것입니다.다가올 미래에 당신은 바쁜 일상 속에서 잠시 멈추고 자신의 몸과 마음을 돌봐야 한다는 신호를 받게 됩니다. 이때 당신은 휴식의 중요성을 깨닫고 내면의 에너지를 재충전하는 시간을 가질 수 있을 것입니다. 그 결과, 더 나은 성과와 만족감을 느끼며 앞으로 나아갈 힘을 얻게 될 것입니다." },
+            { type: "부들", condition: (answers) => answers.filter((a, i) => [1, 4, 13].includes(i) && a === 'B').length >= 2, description: "당신은 규칙이나 정해진 틀에 얽매이지 않고 자유로운 환경에서 자신의 잠재력을 발휘하는 사람입니다. 새로운 것을 시도하거나 예상치 못한 상황에 부딪혔을 때 오히려 흥미를 느끼고, 이를 기회 삼아 자신만의 길을 만들어 나갑니다. 유연한 사고방식을 가진 당신은 변화에 어렵지 않게 적응하며, 예측 불가능한 상황에서도 자신만의 방법으로 해결책을 찾아냅니다. 그러나 이러한 자유로움 속에서도 때로는 안정감을 갈망하기도 합니다. 예측 가능한 일상이나 체계적인 구조가 필요하다는 것을 깨닫는 순간, 당신은 자신의 다양한 면을 더 잘 이해하게 될 것입니다.당신의 가장 큰 매력은 다채로움을 추구하며, 도전을 두려워하지 않는 용기입니다. 하지만 가끔은 잠시 멈추고 자신이 나아가고 있는 방향이 진정 원하는 길인지 되돌아보는 시간도 필요합니다. 자유와 안정 사이의 균형을 찾으려는 당신의 여정은 스스로를 더욱 성장시키는 원동력이 될 것입니다.다가올 미래에 과거 당신의 노력이 결실을 맺을 것입니다. 오랜 시간 노력했던 일이 드디어 빛을 발하기 시작합니다. 당신이 쏟았던 정성과 열정이 결실을 맺으며, 성취감과 보람을 느낄 수 있을 것입니다. 이 경험은 당신에게 더 큰 가능성과 목표를 향한 동기를 부여할 것입니다." },
+            { type: "명아주", condition: (answers) => answers.filter((a, i) => [2, 6, 9].includes(i) && a === 'A').length >= 2, description: "당신은 미지의 세계를 탐험하고 새로운 기회를 찾아 나서는 용기 있는 사람입니다. 당신은 변화를 두려워하지 않으며 도전 속에서 자신의 잠재력을 발견하고자 합니다. 목표를 향해 나아가는 과정에서 좌절이나 실패를 경험하더라도 그것을 성장의 발판으로 삼는 강인한 정신을 가지고 있습니다. 당신의 모습은 주변 사람들에게 큰 동기 부여가 되며, 스스로도 삶의 다양한 가능성을 탐구하는 데에서 깊은 만족을 느낍니다. 그러나 때로는 너무 많은 도전을 추구하면서 스스로를 지나치게 몰아붙이는 경우도 있습니다.이러한 과정 속에서 당신은 자시의 한계를 인정하고, 자신의 내면을 돌아보는 시간을 통해 에너지를 충전할 필요가 있습니다. 당신의 도전은 단순한 위험 감수나 모험이 아니라, 자신을 더 깊이 이해하고 삶의 새로운 길을 개척하는 과정입니다. 당신은 실패를 두려워하지 않는 용기로 세상에 긍정적인 변화를 가져올 수 있는 사람입니다.다가올 미래에 당시에게 예상치 못한 작은 행운이 찾아옵니다. 예상하지 못했던 성공이나 긍정적인 결과가 당신에게 찾아와 뜻밖의 기쁨이 스며들 것입니다. 이 작은 행운은 당신에게 새로운 활력을 불어넣고, 앞으로의 일에 더 큰 자신감을 심어줄 것입니다." },
+            { type: "솜다리", condition: (answers) => answers.filter((a, i) => [5, 7, 12].includes(i) && a === 'C').length >= 2, description: "당신은 사람들의 아픔과 어려움에 공감하며 그들에게 위로와 치유를 제공하는 사람입니다. 당신과 함께하는 사람들은 당신이 주는 따스함과 안정감 덕분에 큰 위안을 얻습니다. 당신은 다른 사람들의 감정을 깊이 이해하고 그들이 다시 일어설 수 있도록 격려하는 데 탁월합니다. 하지만 이러한 타인을 위한 헌신적인 태도는 때로 당신을 소진시키기도 합니다. 당신은 자신의 감정을 돌보는 데 있어 소홀해질 수 있으며, 타인의 문제를 해결하려는 과정에서 자신을 잃어버릴 위험도 있습니다.당신의 공감 능력은 큰 자산이지만, 자신에게도 똑같은 사랑과 배려를 베풀어야 한다는 점을 잊지 말아야 합니다. 당신은 사람들에게 힘과 용기를 주는 존재이며, 동시에 스스로의 내면적 안정감을 유지하는 것이 중요합니다. 당신의 따뜻한 마음은 세상을 따뜻하게 만들어 줄 수 있는 힘을 가지고 있습니다.다가올 미래에 당신은 어떤 결정을 택할지 고민해야 할 순간이 다가옵니다. 이 결정을 통해 당신은 자신의 가치관과 목표를 다시 한 번 재고하고, 더욱 명확한 방향성을 설정할 수 있을 것입니다. 중요한 것은 당신 자신을 믿고 당신이 진정으로 원하는 길을 선택하는 것입니다." }
+        ];
+
+
+        let answers = [];
+        let currentQuestion = 0;
+        const progressBar = document.getElementById("progress-bar");
+        const progressText = document.getElementById("progress-text");
+
+        function updateProgressBar() {
+            const progress = ((currentQuestion + 1) / questions.length) * 100;
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `${Math.round(progress)}%`;
+
+            const progressInfo = document.querySelector(".progress-info");
+            progressInfo.textContent = `질문 ${currentQuestion + 1} / ${questions.length}`;
+        }
+
+        function speak(text) {
+            try {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ko-KR';
+                utterance.rate = 1.0; 
+                utterance.pitch = -1;
+                utterance.volume = 1.0;
+                window.speechSynthesis.speak(utterance);
+            } catch (e) {
+                console.error("음성 합성 오류:", e);
+            }
+        }
+
+        function showNextQuestion() {
+            if (currentQuestion < questions.length) {
+                const questionElement = document.getElementById("question");
+                const optionsElement = document.getElementById("options");
+
+                questionElement.textContent = `질문 ${currentQuestion + 1}: ${questions[currentQuestion].text}`;
+                optionsElement.innerHTML = "";
+
+                questions[currentQuestion].options.forEach((option, index) => {
+                    const button = document.createElement("button");
+                    button.textContent = option;
+                    button.onclick = () => {
+                        answers.push(String.fromCharCode(65 + index));
+                        currentQuestion++;
+                        if (currentQuestion < questions.length) {
+                            updateProgressBar();
+                            showNextQuestion();
+                        } else {
+                            showResult();
+                        }
+                    };
+                    optionsElement.appendChild(button);
+                });
+
+                speak(questions[currentQuestion].text);
+            }
+        }
+
+        function showResult() {
+            const questionElement = document.getElementById("question");
+            const optionsElement = document.getElementById("options");
+            const resultElement = document.getElementById("result");
+            const resultTitle = document.getElementById("result-title");
+            const resultText = document.getElementById("result-text");
+
+            questionElement.style.display = "none";
+            optionsElement.style.display = "none";
+
+            const result = personalityTypes.find(type => type.condition(answers)) || { 
+                type: "중립적 성향", 
+                description: "당신은 고정되지 않은 다양한 성향을 가지고 있습니다." 
+            };
+
+            resultElement.style.display = "block";
+            resultTitle.textContent = result.type;
+            resultText.innerHTML = result.description.replace(/\. /g, '.<br><br>');
+
+            const qrCodeContainer = document.getElementById("qrcode");
+            qrCodeContainer.innerHTML = ""; 
+            QRCode.toCanvas(document.createElement('canvas'), "https://pojea.github.io/realmessage/", { width: 200 }, (error, canvas) => {
+                if (error) {
+                    console.error("QR 코드 생성 실패:", error);
+                } else {
+                    qrCodeContainer.appendChild(canvas);
+                }
+            });
+
+            const restartButton = document.getElementById("restart-button");
+            restartButton.style.display = "inline-block";
+
+            speak(`당신의 결과는 ${result.type}입니다.`);
+        }
+
+        function restartTest() {
+            answers = [];
+            currentQuestion = 0;
+            document.getElementById("result").style.display = "none";
+            document.getElementById("restart-button").style.display = "none";
+            document.getElementById("question").style.display = "block";
+            document.getElementById("options").style.display = "block";
+            updateProgressBar();
+            showNextQuestion();
+        }
+
+        window.onload = () => {
+            showNextQuestion();
+            updateProgressBar();
+        };
+    </script>
+</body>
+</html>
